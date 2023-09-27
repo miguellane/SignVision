@@ -4,7 +4,7 @@ about: Suggest an idea for this project
 title: ''
 labels: 'enhancement'
 assignees: 'miguellane'
-projects: 'SignVision Tracking Project'
+projects: 'miguellane\SignVision Tracking Project'
 
 ---
 
