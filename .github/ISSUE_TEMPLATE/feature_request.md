@@ -4,8 +4,8 @@ about: Suggest an idea for this project
 title: ''
 labels: 'enhancement'
 assignees: 'miguellane'
-projects: 'miguellane/2'
-milestone: '3'
+projects: 'miguellane/SignVision Tracking Project'
+milestone: '2'
 ---
 
 Problem:
