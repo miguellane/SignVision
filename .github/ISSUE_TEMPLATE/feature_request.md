@@ -5,7 +5,7 @@ title: ''
 labels: 'enhancement'
 assignees: 'miguellane'
 projects: 'miguellane/2'
-milestones: 'Sign Vision XR'
+milestone: '2'
 ---
 
 Problem:
