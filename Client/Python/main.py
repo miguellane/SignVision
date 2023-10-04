@@ -1,20 +1,63 @@
 #Dependancies
 import cv2
-import numpy as np
-import os
-from matplotlib import pyplot as plt
-import time
 import mediapipe as mp
-from tensorflow.keras.models import Sequential
+
+import queue
+import json
+import requests
 
 import draw
-import SVmodel
+
+
+
 
 #Keypoints Using MP Holistic
 mp_holistic = mp.solutions.holistic # Holistic model
 
-# Create and initialize model
-model = SVmodel.SVModel()
+class Sequence():
+    def __init__(self, action=None):
+        self.action = action
+        self.frames = queue.Queue(maxsize=30)
+
+    #Add frame to sequence, if sequence is full, send to API
+    def queueFrame(self, landmarks):
+        frame = self.landmarksToDict(landmarks)
+        self.frames.put(frame)
+
+        result = None
+        if self.frames.full():
+            result = self.postAPI()
+            self.frames.get()
+        return result
+
+    #Convert mediapipe landmarks to dict, with 0 if no landmarks
+    def landmarksToDict(self, landmarks):
+        frame = {
+            #Landmarks [left 21, right 21, pose 33]
+            "landmarks": [{"x": 0, "y": 0, "z": 0}] * 75
+        }
+        if landmarks.left_hand_landmarks:
+            frame["landmarks"][0:21] = [{"x": land.x, "y": land.y, "z": land.z} for land in landmarks.left_hand_landmarks.landmark]
+        if landmarks.right_hand_landmarks:
+            frame["landmarks"][21:42] = [{"x": land.x, "y": land.y, "z": land.z} for land in landmarks.right_hand_landmarks.landmark]
+        if landmarks.pose_landmarks:
+            frame["landmarks"][42:75] = [{"x": land.x, "y": land.y, "z": land.z} for land in landmarks.pose_landmarks.landmark]
+
+        return frame
+
+    def postAPI(self):
+        fulldict = {
+            "action": self.action,
+            "frames": list(self.frames.queue)
+        }
+        url = "http://127.0.0.1:8000/add"
+        payload = json.dumps(fulldict)
+        headers = {'Content-type': 'application/json'}
+        try:
+            response = requests.post(url, payload, headers=headers)
+            return response if response.status_code == 200 else None
+        except:
+            return None
 
 def mediapipe_detection(image, model):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # COLOR CONVERSION BGR 2 RGB
@@ -24,65 +67,85 @@ def mediapipe_detection(image, model):
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # COLOR COVERSION RGB 2 BGR
     return image, results
 
-def extract_keypoints(results):
-    pose = np.array([[res.x, res.y, res.z, res.visibility] for res in results.pose_landmarks.landmark]).flatten() if results.pose_landmarks else np.zeros(33*4)
-    face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten() if results.face_landmarks else np.zeros(468*3)
-    lh = np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() if results.left_hand_landmarks else np.zeros(21*3)
-    rh = np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() if results.right_hand_landmarks else np.zeros(21*3)
-    return np.concatenate([pose, face, lh, rh])
 
-#Main
-sequence = []
-sentence = []
-threshold = 0.3
-cap = cv2.VideoCapture(1)
-# Set mediapipe model 
-with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
-    while cap.isOpened():
 
-        # Read feed
-        ret, frame = cap.read()
+def collect():
+    cap = cv2.VideoCapture(0)
+    # Set mediapipe model 
+    with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+        err = False
+        while not err:
+            action = input("Enter action: ")
+            #Collect 5 sequences
+            for num_sequence in range(5):
+                if err: break
+                seq = Sequence(action)
+                #Collect 30 frames of data
+                for num_frame in range(30):
+                    if err: break
+                    # Read feed
+                    ret, frame = cap.read()
 
-        # Make detections
-        image, results = mediapipe_detection(frame, holistic)
-        
-        # Draw landmarks
-        draw.styled_landmarks(image, results)
-        
-        # 2. Prediction logic
-        keypoints = extract_keypoints(results)
-#         sequence.insert(0,keypoints)
-#         sequence = sequence[:30]
-        sequence.append(keypoints)
-        sequence = sequence[-30:]
-        
-        if len(sequence) == 30:
-            res = model.predict(sequence)
-            print(model.actions[np.argmax(res)])
-            print(res)
-            
-            
-        #3. Viz logic
-            if res[np.argmax(res)] > threshold: 
-                if len(sentence) > 0: 
-                    if model.actions[np.argmax(res)] != sentence[-1]:
-                        sentence.append(model.actions[np.argmax(res)])
-                else:
-                    sentence.append(model.actions[np.argmax(res)])
+                    # Make detections
+                    image, landmarks = mediapipe_detection(frame, holistic)
 
-            if len(sentence) > 5: 
-                sentence = sentence[-5:]
-            
-        cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
-        cv2.putText(image, ' '.join(sentence), (3,30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        
-        # Show to screen
-        cv2.imshow('OpenCV Feed', image)
+                    # Draw landmarks
+                    draw.styled_landmarks(image, landmarks)
 
-        # Break gracefully
-        if cv2.waitKey(10) & 0xFF == ord('q'):
-            break
-    cap.release()
-    cv2.destroyAllWindows()
+                    #Wait buffer for each sequence & label
+                    if num_frame == 0:
+                        draw.img_print(image, "STARTING COLLECTION")
+                        cv2.waitKey(5000)
+                    draw.img_print_collect(image, seq.action, num_sequence)
 
+                    #Queue frame and send to API if valid
+                    seq.queueFrame(landmarks)
+
+                    #Break gracefully
+                    if cv2.waitKey(10) & 0xFF == ord('q'):
+                        err = True
+                        break
+        cap.release()
+        cv2.destroyAllWindows()
+
+def classify():
+    cap = cv2.VideoCapture(0)
+    # Set mediapipe model 
+    with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+        while cap.isOpened():
+            seq = Sequence()
+            sentence = queue.Queue(maxsize=5)
+            # Read feed
+            ret, frame = cap.read()
+
+            # Make detections
+            image, landmarks = mediapipe_detection(frame, holistic)
+
+            # Draw landmarks
+            draw.styled_landmarks(image, landmarks)
+
+            #Queue frame and send to API if valid
+            result = seq.queueFrame(landmarks)
+            if result:
+                print(result)
+                if sentence[-1] != result:
+                    if sentence.full():
+                        sentence.get()
+                    sentence.put(result)
+
+            draw.img_print(image, list(sentence.queue))
+
+            # Break gracefully
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                break
+        cap.release()
+        cv2.destroyAllWindows()
+    return
+
+mode = input("Enter mode: (classify or collect): ")
+if mode == "classify":
+    classify()
+elif mode == "collect":
+    collect()
+else:
+    print("Invalid mode")

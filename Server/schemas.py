@@ -2,9 +2,14 @@ from pydantic import BaseModel
 from typing import List
 import json
 
-#Action {action: str, frames: List30[Frame]}
-#Frame {landmarks: List75[Landmark]}
-#Landmark {x: int, y: int, z: int}
+# Action = {
+#   "action": str, 
+#   "frames": [
+#       "landmarks": [
+#           {x: int, y: int, z: int}
+#       ]
+#   ]
+# }
 
 class Landmark(BaseModel):
     x: int = None

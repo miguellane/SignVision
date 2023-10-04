@@ -3,9 +3,14 @@ from typing import List
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-#Action {action: str, frames: List30[Frame]}
-#Frame {landmarks: List75[Landmark]}
-#Landmark {x: int, y: int, z: int}
+# Action = {
+#   "action": str, 
+#   "frames": [
+#       "landmarks": [
+#           {x: int, y: int, z: int}
+#       ]
+#   ]
+# }
 
 class Action(Base):
     __tablename__ = "actions"
