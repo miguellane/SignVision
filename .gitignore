@@ -3,7 +3,8 @@ __pycache__/
 
 # Ignore virtual environment
 .venv/
-.recogenv/
+.clientvenv/
+.servervenv/
 
 # Ignore IDE files
 .vscode/
