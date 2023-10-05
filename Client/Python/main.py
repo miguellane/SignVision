@@ -1,11 +1,13 @@
-#Dependancies
+#Machine Learning
 import cv2
 import mediapipe as mp
-
+#Data types
 import queue
 import json
 import requests
-
+#TTS
+import pyttsx3
+#Project files
 import draw
 
 
@@ -67,8 +69,6 @@ def mediapipe_detection(image, model):
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # COLOR COVERSION RGB 2 BGR
     return image, results
 
-
-
 def collect():
     cap = cv2.VideoCapture(0)
     # Set mediapipe model 
@@ -113,6 +113,7 @@ def classify():
     # Set mediapipe model 
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
         while cap.isOpened():
+            engine = pyttsx3.init()
             seq = Sequence()
             sentence = queue.Queue(maxsize=5)
             # Read feed
@@ -132,8 +133,10 @@ def classify():
                     if sentence.full():
                         sentence.get()
                     sentence.put(result)
-
+                    engine.say("Hello")
+                   
             draw.img_print(image, list(sentence.queue))
+            engine.runAndWait()
 
             # Break gracefully
             if cv2.waitKey(10) & 0xFF == ord('q'):
