@@ -8,7 +8,7 @@ import os
 import numpy as np
 
 # Database
-import models
+import Server.src.models as models
 from database import engine, get_db
 from sqlalchemy.orm import Session
 models.Base.metadata.create_all(bind=engine)

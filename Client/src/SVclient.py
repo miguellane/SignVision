@@ -8,7 +8,7 @@ import requests
 #TTS
 import pyttsx3
 #Project files
-import draw
+import src.Client.SVdraw as SVdraw
 
 
 
@@ -90,13 +90,13 @@ def collect():
                     image, landmarks = mediapipe_detection(frame, holistic)
 
                     # Draw landmarks
-                    draw.styled_landmarks(image, landmarks)
+                    SVdraw.styled_landmarks(image, landmarks)
 
                     #Wait buffer for each sequence & label
                     if num_frame == 0:
-                        draw.img_print(image, "STARTING COLLECTION")
+                        SVdraw.img_print(image, "STARTING COLLECTION")
                         cv2.waitKey(5000)
-                    draw.img_print_collect(image, seq.action, num_sequence)
+                    SVdraw.img_print_collect(image, seq.action, num_sequence)
 
                     #Queue frame and send to API if valid
                     seq.queueFrame(landmarks)
@@ -123,7 +123,7 @@ def classify():
             image, landmarks = mediapipe_detection(frame, holistic)
 
             # Draw landmarks
-            draw.styled_landmarks(image, landmarks)
+            SVdraw.styled_landmarks(image, landmarks)
 
             #Queue frame and send to API if valid
             result = seq.queueFrame(landmarks)
@@ -135,7 +135,7 @@ def classify():
                     sentence.put(result)
                     engine.say("Hello")
                    
-            draw.img_print(image, list(sentence.queue))
+            SVdraw.img_print(image, list(sentence.queue))
             engine.runAndWait()
 
             # Break gracefully

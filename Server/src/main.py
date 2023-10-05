@@ -4,7 +4,7 @@ from starlette.responses import JSONResponse
 from starlette.templating import Jinja2Templates
 templates = Jinja2Templates(directory="templates")
 # Database
-import schemas, models
+import Server.src.schemas as schemas, Server.src.models as models
 from database import engine, get_db
 from sqlalchemy.orm import Session
 models.Base.metadata.create_all(bind=engine)
